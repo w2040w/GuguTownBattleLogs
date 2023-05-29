@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         咕咕镇剩余价值收割机
-// @namespace    https://greasyfork.org/zh-CN/users/453092
-// @version      4.09
+// @namespace    https://github.com/GuguTown/GuguTownBattleLogs
+// @version      0.4.0.9
 // @description  斗争者的小助手
 // @author       ikarosf
 // @match        https://www.guguzhen.com/fyg_pk.php
