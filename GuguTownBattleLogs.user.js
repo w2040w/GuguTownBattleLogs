@@ -581,7 +581,7 @@ async function fyg_pk_html() {
         var text = '';
         var divtext = '<div class="detaillogitem {0}"><div class="nameandlevel"><h3><span style="width: 120px;">{1}</span>'+
             (showSM?'<span style="width: 70px;">{2}</span>':"")+
-            (showcharlv?'<span style="width: 40px;">{3}</span><span style="width: 80px;">{4}</span>':'')+
+            (showcharlv?'<span style="width: 40px;">{3}</span><span style="width: 80px;">{4}</span>{6}':'')+
             '</h3></div><div style="display:none;">{5}</div></div>';
 
         var during_s = 24 * 60 * 60 * 1000
@@ -611,7 +611,54 @@ async function fyg_pk_html() {
                 let char = thisitem.char
                 let charlv = "LV:"+thisitem.charlevel
 
-                text+=divtext.format(thisclass,name,xishu,char,charlv,thisitem.log);
+                let extrainfo = ""
+                if(Array.isArray(thisitem.lifes){
+                    const weaponAbbrMap = new Map([
+                        ['SWORD', '剑'],['BOW', '短弓'],['STAFF', '短杖'],
+                        ['BLADE', '刃'],['ASSBOW', '弓'],['DAGGER', '匕首'],
+                        ['WAND', '光辉'],['SHIELD', '盾剑'],['CLAYMORE', '重剑'],
+                        ['SPEAR', '长枪'],['COLORFUL', '长剑']
+                    ]);
+                    const upStr = "10+";
+                    const minDamagePer = 30;
+                    const maxLifeValue = 10;
+                    let extraOri = "<span style='width:50px;'>{0}</span><span class='{1}' style='width:40px;'>{2}</span><span style='width:110px;'>{3}</span>"
+                    let weapon = weaponAbbrMap.get(thisitem.weapon);
+                    let lifes = thisitem.lifes;
+                    let damages = thisitem.damages;
+                    let cl, value;
+                    if(lifes[0] > lifes[1]){
+                        value = lifes[0]/lifes[1];
+                        cl = "text-info"
+                    } else {
+                        value = lifes[1]/lifes[0];
+                        cl = "text-danger"
+                    }
+                    value = value.toFixed(2);
+                    if(value > maxLifeValue){
+                        value = upStr;
+                    }
+
+                    let damagePerStr = "";
+                    let damageSum = damages[0]+damages[1]+damages[2];
+                    if(damageSum === 0){
+                        damagePerStr = "0";
+                    } else {
+                        let damageClass = ["text-danger", "text-primary", "text-warning"];
+                        let damagePerOri = "<i class='{0}'>{1}% </i>";
+                        for(let i = 0; i < 3; i++){
+                            let per = (damages[i]*100/damageSum).toFixed(0);
+                            if(per < minDamagePer){
+                                continue;
+                            } else {
+                                damagePerStr += damagePerOri.format(damageClass[i], per);
+                            }
+                        }
+                    }
+                    extrainfo = extraOri.format(weapon, cl, value, damagePerStr)
+                }
+
+                text+=divtext.format(thisclass,name,xishu,char,charlv,thisitem.log,extrainfo);
 
 
             }
@@ -667,6 +714,13 @@ async function fyg_pk_html() {
         $('[data-toggle="tooltip"]').tooltip();
     }
 
+    const weaponMap = new Map([
+        ['探险者短剑', 'SWORD'],['探险者短弓', 'BOW'],['探险者短杖', 'STAFF'],
+        ['狂信者的荣誉之刃', 'BLADE'],['反叛者的刺杀弓', 'ASSBOW'],['幽梦匕首', 'DAGGER'],
+        ['光辉法杖', 'WAND'],['荆棘盾剑', 'SHIELD'],['陨铁重剑', 'CLAYMORE'],
+        ['饮血魔剑', 'SPEAR'],['彩金长剑', 'COLORFUL']
+    ]);
+
     let observerBody1 = new MutationObserver(async ()=>{ //战斗记录
         var pkTextDiv = document.querySelector("#pk_text");
         unsafeWindow.pkTextDiv = pkTextDiv;
@@ -699,12 +753,22 @@ async function fyg_pk_html() {
             echarlv = einfolist[3]
         }
 
+        let shield = enemyinfo.querySelectorAll("span.fyg_f14")[0].innerText.split(" ")[0];
+        let health = enemyinfo.querySelectorAll("span.fyg_f14")[1].innerText.split(" ")[0];
+        let lifes = [parseInt(shield),parseInt(health)];
+        let weaponName = enemyinfo.querySelectorAll(".fyg_mp3")[0].dataset.originalTitle;
+        let weapon = weaponMap.get(weaponName);
+
+        let physical = pkTextDiv.querySelectorAll("div.hl-primary > .col-md-2")[3].innerText;
+        let magical = pkTextDiv.querySelectorAll("div.hl-primary > .col-md-2")[4].innerText;
+        let trueD = pkTextDiv.querySelectorAll("div.hl-primary > .col-md-2")[5].innerText;
+        let damages = [parseInt(physical),parseInt(magical),parseInt(trueD)];
 
         /*console.log(enemydivtext)
         console.log(echar)
         console.log(echarlv)*/
 
-        await logupdate(pkTextDiv.innerHTML,battleresult,enemyname,echar,echarlv);
+        await logupdate(pkTextDiv.innerHTML,battleresult,enemyname,echar,echarlv,lifes,damages,weapon);
         if(echar=="野怪"){return}
         if(mainHost!="0"){
             get_user_theard(enemyname);
@@ -712,11 +776,13 @@ async function fyg_pk_html() {
 
     });
 
-    async function logupdate(etext,isbattlewin,enemyname,enemychar,enemycharlv){
+    async function logupdate(etext,isbattlewin,enemyname,enemychar,enemycharlv,lifes,damages,weapon){
         var now = getLocDate();
         var thisid = md5(etext)
 
-        await db.battleLog.add({id:thisid,username:user,log:etext, isWin:isbattlewin,enemyname:enemyname,char:enemychar,charlevel:enemycharlv,time:now});
+        await db.battleLog.add({id:thisid,username:user,log:etext,
+          isWin:isbattlewin,enemyname:enemyname,char:enemychar,charlevel:enemycharlv,
+          lifes:lifes,damages:damages,weapon:weapon,time:now});
     }
 
     async function logupdateraw(etext,isbattlewin,enemyname,enemychar,enemycharlv,now,username){
