@@ -54,13 +54,27 @@ async function fyg_pk_html() {
     unsafeWindow.BattleLog = BattleLog;
     await transToDbdata();
 
-    var showSM = true;
-    var showcharlv = true;
+    const checkboxids = ["showSM", "showcharlv", "showArmor", "showDamage", "showAttr", "showHalo"];
+    let config = {};
+    function initConfigDetail(checkboxid){
+        let localValue = localStorage.getItem(checkboxid);
+        if(localValue === null || localValue === "true"){
+            config[checkboxid]= true;
+        } else {
+            config[checkboxid] = false;
+        }
+    }
+    initConfigDetail("showExtrainfo");
+    for(let i = 2; i < 6; i++){
+        initConfigDetail(checkboxids[i]);
+    }
+    config.showSM = true;
+    config.showcharlv = true;
     if(localStorage.getItem('showSM')!==null){
-        showSM = eval(localStorage.getItem('showSM'));
+        config.showSM = eval(localStorage.getItem('showSM'));
     }
     if(localStorage.getItem('showcharlv')!==null){
-        showcharlv = eval(localStorage.getItem('showcharlv'));
+        config.showcharlv = eval(localStorage.getItem('showcharlv'));
     }
 
     var mainHost = "0"
@@ -474,6 +488,15 @@ async function fyg_pk_html() {
         <input type="checkbox" id="showcharlv" style="width: 20px;">记录显示等级</input>
         </div>
         <div>
+        <input type="checkbox" id="showExtrainfo" style="width: 20px;">显示额外信息</input>
+        </div>
+        <div class="hidden" id="extrainfo">
+        <input type="checkbox" id="showArmor" style="width: 20px;">防具</input>
+        <input type="checkbox" id="showDamage" style="width: 20px;">伤害比例</input>
+        <input type="checkbox" id="showAttr" style="width: 20px;">加点</input>
+        <input type="checkbox" id="showHalo" style="width: 20px;">光环</input>
+        </div>
+        <div>
         <input type="button" class="btn" value="手动删除记录" id="deletelog"></input>
         <input type="button" class="btn" value="根据用户名查询记录" id="showlogbyid"></input>
         </div>
@@ -521,26 +544,36 @@ async function fyg_pk_html() {
             }
         })
 
-        $('#showSM').attr("checked", showSM);
-        $("#showSM").change(function(){
-            if (this.checked == true){
-                showSM = true;
-                localStorage.setItem('showSM',true );
+        function initCheck(checkid){
+            $('#'+checkid).prop("checked", config[checkid]);
+            $("#"+checkid).change(function(){
+                if (this.checked === true){
+                    config[checkid] = true;
+                    localStorage.setItem(checkid,true);
+                }else{
+                    config[checkid] = false;
+                    localStorage.setItem(checkid,false);
+                }
+            })
+        }
+        $('#showExtrainfo').prop("checked", config["showExtrainfo"]);
+        if (config["showExtrainfo"]){
+            $("#extrainfo").removeClass("hidden");
+        }
+        $("#showExtrainfo").change(function(){
+            if (this.checked === true){
+                config.showExtrainfo = true;
+                $("#extrainfo").removeClass("hidden");
+                localStorage.setItem('showExtrainfo', true);
             }else{
-                showSM = false;
-                localStorage.setItem('showSM',false );
+                config.showExtrainfo = false;
+                $("#extrainfo").addClass("hidden");
+                localStorage.setItem('showExtrainfo', false);
             }
         })
-        $('#showcharlv').attr("checked", showcharlv);
-        $("#showcharlv").change(function(){
-            if (this.checked == true){
-                showcharlv = true;
-                localStorage.setItem('showcharlv',true );
-            }else{
-                showcharlv = false;
-                localStorage.setItem('showcharlv',false );
-            }
-        })
+        for(let checkboxid of checkboxids){
+            initCheck(checkboxid);
+        }
 
         $("#deletelog").click(function(){
             var dayss = parseInt(prompt("将多少天以前的战斗记录清除？\n警告：删除的记录无法恢复，假如填0将删除所有记录"))
@@ -581,8 +614,8 @@ async function fyg_pk_html() {
         var text = '';
         var divtext = '<div class="detaillogitem {0}"><div class="nameandlevel"><h3>'+
             '<span style="width: 60px">{6}</span><span style="width: 120px;">{1}</span>'+
-            (showSM?'<span style="width: 70px;">{2}</span>':"")+
-            (showcharlv?'<span style="width: 40px;">{3}</span><span style="width: 80px;">{4}</span>{7}':'')+
+            (config.showSM?'<span style="width: 70px;">{2}</span>':"")+
+            (config.showcharlv?'<span style="width: 40px;">{3}</span><span style="width: 80px;">{4}</span>{7}':'')+
             '</h3></div><div style="display:none;">{5}</div></div>';
 
         var during_s = 24 * 60 * 60 * 1000
@@ -615,7 +648,7 @@ async function fyg_pk_html() {
                 let time = date.getHours().toString().padStart(2,'0')+":"+date.getMinutes().toString().padStart(2,'0');
 
                 let extrainfo = "";
-                if(Array.isArray(thisitem.attrs)){
+                if(Array.isArray(thisitem.attrs) && config.showExtrainfo){
                     const weaponAbbrMap = new Map([
                         ['SWORD', '剑'],['BOW', '短弓'],['STAFF', '短杖'],
                         ['BLADE', '刃'],['ASSBOW', '弓'],['DAGGER', '匕首'],
@@ -628,9 +661,8 @@ async function fyg_pk_html() {
                     ]);
                     const upStr = "10+";
                     const minDamagePer = 30;
-                    let extraOri = "<span style='width:50px;'>{0}</span><span style='width:50px;'>{1}</span>"
-                        +"<span style='width:110px;'>{2}</span><span style='width:120px; color: grey;'>{3}</span>"
-                        +"<span style='width:190px'>{4}</span>";
+                    let spanOri = "<span style='width:{0}px;'>{1}</span>";
+                    let attrOri = "<span style='width:120px; color:grey'>{0}</span>";
                     let weapon = weaponAbbrMap.get(thisitem.weapon);
                     let armor = armorAbbrMap.get(thisitem.armor);
 
@@ -675,7 +707,10 @@ async function fyg_pk_html() {
                         haloStr = "";
                     }
 
-                    extrainfo = extraOri.format(weapon, armor, damagePerStr, attrStr, haloStr); 
+                    extrainfo = spanOri.format(50, weapon) + strWhenbool(config.showArmor, spanOri.format(50, armor))
+                        + strWhenbool(config.showDamage, spanOri.format(110, damagePerStr))
+                        + strWhenbool(config.showAttr, attrOri.format(attrStr))
+                        + strWhenbool(config.showHalo, spanOri.format(190, haloStr));
                 }
 
                 text+=divtext.format(thisclass,name,xishu,char,charlv,thisitem.log,time,extrainfo);
@@ -691,11 +726,18 @@ async function fyg_pk_html() {
 
         $('[data-toggle="tooltip"]').tooltip();
     }
+    function strWhenbool(cond, str){
+        if(cond){
+            return str;
+        } else {
+            return "";
+        }
+    }
 
     async function detaillogpanelsetbyname(key){
         var text = '';
         var divtext = '<div class="detaillogitem {0}"><div class="nameandlevel"><h3><span style="width: 120px;">{1}</span>'+
-            (showcharlv?'<span style="width: 40px;">{2}</span><span style="width: 80px;">{3}</span>':'')+
+            (config.showcharlv?'<span style="width: 40px;">{2}</span><span style="width: 80px;">{3}</span>':'')+
             '<span style="width: 100px;">{4}</span>'+
             '</h3></div><div style="display:none;">{5}</div></div>';
 
