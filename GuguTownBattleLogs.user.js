@@ -58,6 +58,27 @@ async function fyg_pk_html() {
 
     const checkboxids = ["showSM", "showcharlv", "showArmor", "showDamage", "showAttr", "showHalo"];
     let config = {};
+    function initOldConfigDetail(checkboxid){
+        let localValue = localStorage.getItem(checkboxid);
+        if(localValue === null || localValue === "true"){
+            config[checkboxid]= true;
+        } else {
+            config[checkboxid] = false;
+        }
+    }
+    function updateOldConfig(){
+        initOldConfigDetail("showExtrainfo")
+        localStorage.removeItem("showExtrainfo")
+        for(let i = 2; i < 6; i++){
+            initOldConfigDetail(checkboxids[i]);
+            localStorage.removeItem(checkboxids[i])
+        }
+        saveConfig()
+    }
+    if(typeof localStorage.getItem("showExtrainfo") === 'string') {
+        updateOldConfig()
+    }
+
     let jsonRaw = localStorage.getItem("battlelogConfig");
     if(typeof jsonRaw === "string"){
       config = JSON.parse(jsonRaw);
