@@ -56,25 +56,23 @@ async function fyg_pk_html() {
 
     const checkboxids = ["showSM", "showcharlv", "showArmor", "showDamage", "showAttr", "showHalo"];
     let config = {};
+    let jsonRaw = localStorage.getItem("battlelogConfig");
+    if(typeof jsonRaw === "string"){
+      config = JSON.parse(jsonRaw);
+    }
+    function saveConfig(){
+        let raw = JSON.stringify(config);
+        localStorage.setItem("battlelogConfig", raw);
+    }
     function initConfigDetail(checkboxid){
-        let localValue = localStorage.getItem(checkboxid);
-        if(localValue === null || localValue === "true"){
+        let value = config[checkboxid];
+        if(typeof value !== 'boolean'){
             config[checkboxid]= true;
-        } else {
-            config[checkboxid] = false;
         }
     }
     initConfigDetail("showExtrainfo");
-    for(let i = 2; i < 6; i++){
-        initConfigDetail(checkboxids[i]);
-    }
-    config.showSM = true;
-    config.showcharlv = true;
-    if(localStorage.getItem('showSM')!==null){
-        config.showSM = eval(localStorage.getItem('showSM'));
-    }
-    if(localStorage.getItem('showcharlv')!==null){
-        config.showcharlv = eval(localStorage.getItem('showcharlv'));
+    for(let checkboxid of checkboxids){
+        initConfigDetail(checkboxid);
     }
 
     var mainHost = "0"
@@ -544,16 +542,15 @@ async function fyg_pk_html() {
             }
         })
 
-        function initCheck(checkid){
+        function initCheckbox(checkid){
             $('#'+checkid).prop("checked", config[checkid]);
             $("#"+checkid).change(function(){
                 if (this.checked === true){
                     config[checkid] = true;
-                    localStorage.setItem(checkid,true);
                 }else{
                     config[checkid] = false;
-                    localStorage.setItem(checkid,false);
                 }
+                saveConfig();
             })
         }
         $('#showExtrainfo').prop("checked", config["showExtrainfo"]);
@@ -564,15 +561,14 @@ async function fyg_pk_html() {
             if (this.checked === true){
                 config.showExtrainfo = true;
                 $("#extrainfo").removeClass("hidden");
-                localStorage.setItem('showExtrainfo', true);
             }else{
                 config.showExtrainfo = false;
                 $("#extrainfo").addClass("hidden");
-                localStorage.setItem('showExtrainfo', false);
             }
+            saveConfig();
         })
         for(let checkboxid of checkboxids){
-            initCheck(checkboxid);
+            initCheckbox(checkboxid);
         }
 
         $("#deletelog").click(function(){
@@ -783,25 +779,23 @@ async function fyg_pk_html() {
         ['饮血魔剑', 'SPEAR'],['彩金长剑', 'COLORFUL']
     ]);
     const armorMap = new Map([
-       ["探险者铁甲", "PLATE"],["探险者皮甲", "LEATHER"],["探险者布甲", "CLOTH"],
-       ["旅法师的灵光袍", "CLOAK"],["战线支撑者的荆棘重甲", "THORN"],["复苏战衣", "WOOD"],
-       ["挑战斗篷", "CAPE"]
+        ["探险者铁甲", "PLATE"],["探险者皮甲", "LEATHER"],["探险者布甲", "CLOTH"],
+        ["旅法师的灵光袍", "CLOAK"],["战线支撑者的荆棘重甲", "THORN"],["复苏战衣", "WOOD"],
+        ["挑战斗篷", "CAPE"]
     ]);
     const haloMap = new Map([
-      ["启程之誓", "SHI"], ["启程之心", "XIN"], ["启程之风", "FENG"],
-      ["等级挑战", "TIAO"], ["等级压制", "YA"], ["破壁之心", "BI"], ["破魔之心", "MO"],
-      ["复合护盾", "DUN"], ["鲜血渴望", "XUE"], ["削骨之痛", "XIAO"], ["圣盾祝福", "SHENG"],
-      ["恶意抽奖", "E"], ["伤口恶化", "SHANG"], ["精神创伤", "SHEN"], ["铁甲尖刺", "CI"],
-      ["忍无可忍", "REN"], ["热血战魂", "RE"], ["点到为止", "DIAN"], ["午时已到", "WU"],
-      ["纸薄命硬", "ZHI"], ["不动如山", "SHAN"], ["沸血之志", "FEI"], ["波澜不惊", "BO"],
-      ["飓风之力", "JU"], ["红蓝双刺", "HONG"], ["荧光护盾", "JUE"], ["后发制人", "HOU"],
-      ["钝化锋芒", "DUNH"], ["自信回头", "ZI"]
+        ["启程之誓", "SHI"], ["启程之心", "XIN"], ["启程之风", "FENG"],
+        ["等级挑战", "TIAO"], ["等级压制", "YA"], ["破壁之心", "BI"], ["破魔之心", "MO"],
+        ["复合护盾", "DUN"], ["鲜血渴望", "XUE"], ["削骨之痛", "XIAO"], ["圣盾祝福", "SHENG"],
+        ["恶意抽奖", "E"], ["伤口恶化", "SHANG"], ["精神创伤", "SHEN"], ["铁甲尖刺", "CI"],
+        ["忍无可忍", "REN"], ["热血战魂", "RE"], ["点到为止", "DIAN"], ["午时已到", "WU"],
+        ["纸薄命硬", "ZHI"], ["不动如山", "SHAN"], ["沸血之志", "FEI"], ["波澜不惊", "BO"],
+        ["飓风之力", "JU"], ["红蓝双刺", "HONG"], ["荧光护盾", "JUE"], ["后发制人", "HOU"],
+        ["钝化锋芒", "DUNH"], ["自信回头", "ZI"]
     ]);
     const attrMap = new Map([
-        ["icon-double-angle-down", "doubledown"],
-        ["icon-angle-down", "down"],
-        ["icon-angle-up", "up"],
-        ["icon-double-angle-up", "doubleup"],
+        ["icon-double-angle-down", "doubledown"], ["icon-angle-down", "down"],
+        ["icon-double-angle-up", "doubleup"], ["icon-angle-up", "up"],
     ]);
 
     let observerBody1 = new MutationObserver(async ()=>{ //战斗记录
