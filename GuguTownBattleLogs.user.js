@@ -29,6 +29,8 @@
 // @grant        GM_getValue
 // @grant        GM_addStyle
 // @grant        GM_listValues
+// @downloadURL  https://github.com/GuguTown/GuguTownBattleLogs/raw/dev/GuguTownBattleLogs.user.js
+// @updateURL    https://github.com/GuguTown/GuguTownBattleLogs/raw/dev/GuguTownBattleLogs.user.js
 // ==/UserScript==
 
 async function fyg_pk_html() {
