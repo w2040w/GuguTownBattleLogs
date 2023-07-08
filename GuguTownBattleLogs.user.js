@@ -783,6 +783,7 @@ async function fyg_pk_html() {
         ["旅法师的灵光袍", "CLOAK"],["战线支撑者的荆棘重甲", "THORN"],["复苏战衣", "WOOD"],
         ["挑战斗篷", "CAPE"]
     ]);
+    const equipOldMap = new Map([['饮血长枪','SPEAR'],['荆棘剑盾','SHIELD'],["复苏木甲", "WOOD"]]);
     const haloMap = new Map([
         ["启程之誓", "SHI"], ["启程之心", "XIN"], ["启程之风", "FENG"],
         ["等级挑战", "TIAO"], ["等级压制", "YA"], ["破壁之心", "BI"], ["破魔之心", "MO"],
@@ -830,10 +831,22 @@ async function fyg_pk_html() {
             echarlv = einfolist[3]
         }
 
+        let invalids = [];
+        function mapGet(map, oriValue, type){
+            let desValue = map.get(oriValue);
+            if(desValue === undefined){
+                invalids.push({"type": type, "oriValue": oriValue});
+                console.log("errMap: {0}, {1}".format(type, oriValue));
+            }
+            return desValue;
+        }
+        function sumMap(map1, map2){
+            return new Map([...map1, ...map2]);
+        }
         let weaponName = enemyinfo.querySelectorAll(".fyg_mp3")[0].dataset.originalTitle;
-        let weapon = weaponMap.get(weaponName);
+        let weapon = mapGet(sumMap(weaponMap,equipOldMap) , weaponName, "weapon");
         let armorName = enemyinfo.querySelectorAll(".fyg_mp3")[2].dataset.originalTitle;
-        let armor = armorMap.get(armorName);
+        let armor = mapGet(sumMap(armorMap,equipOldMap), armorName, "armor");
 
         let physical = pkTextDiv.querySelectorAll("div.hl-primary > .col-md-2")[3].innerText;
         let magical = pkTextDiv.querySelectorAll("div.hl-primary > .col-md-2")[4].innerText;
@@ -845,20 +858,22 @@ async function fyg_pk_html() {
         let attrs = [];
         for(let i = 0; i < 6; i++){
             let attrClass= angles[i].classList[1];
-            attrs.push(attrMap.get(attrClass));
+            attrs.push(mapGet(attrMap, attrClass, "attrClass"+i));
         }
         let iHalo = enemyinfo.querySelectorAll(".fyg_tr")[0].innerText.matchAll(/\|[^\|]+\|/g);
         let halos = [];
+        let haloIndex = 0;
         for(let haloRaw of iHalo){
             let haloName = haloRaw[0].substring(1,5);
-            halos.push(haloMap.get(haloName));
+            halos.push(mapGet(haloMap, haloName, "halo"+haloIndex));
+            haloIndex++;
         }
 
         /*console.log(enemydivtext)
         console.log(echar)
         console.log(echarlv)*/
         await logupdate(pkTextDiv.innerHTML,battleresult,enemyname,echar,echarlv,
-          attrs,halos,damages,weapon,armor);
+          attrs,halos,damages,weapon,armor,invalids);
         if(echar=="野怪"){return}
         if(mainHost!="0"){
             get_user_theard(enemyname);
@@ -866,13 +881,13 @@ async function fyg_pk_html() {
 
     });
 
-    async function logupdate(etext,isbattlewin,enemyname,enemychar,enemycharlv,attrs,halos,damages,weapon,armor){
+    async function logupdate(etext,isbattlewin,enemyname,enemychar,enemycharlv,attrs,halos,damages,weapon,armor,invalids){
         var now = getLocDate();
         var thisid = md5(etext)
 
         await db.battleLog.add({id:thisid,username:user,log:etext,
             isWin:isbattlewin,enemyname:enemyname,char:enemychar,charlevel:enemycharlv, attrs: attrs,
-            damages:damages, halos: halos, weapon:weapon, armor: armor, time:now});
+            damages:damages, halos: halos, weapon:weapon, armor: armor, invalids: invalids, time:now});
     }
 
     async function logupdateraw(etext,isbattlewin,enemyname,enemychar,enemycharlv,now,username){
