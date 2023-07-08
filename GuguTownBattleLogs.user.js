@@ -799,13 +799,12 @@ async function fyg_pk_html() {
         ['探险者之剑', 'SWORD'],['探险者短弓', 'BOW'],['探险者短杖', 'STAFF'],
         ['狂信者的荣誉之刃', 'BLADE'],['反叛者的刺杀弓', 'ASSBOW'],['幽梦匕首', 'DAGGER'],
         ['光辉法杖', 'WAND'],['荆棘盾剑', 'SHIELD'],['陨铁重剑', 'CLAYMORE'],
-        ['饮血魔剑', 'SPEAR'],['彩金长剑', 'COLORFUL'],
-        ['饮血长枪','SPEAR'],['荆棘剑盾','SHIELD']
+        ['饮血魔剑', 'SPEAR'],['彩金长剑', 'COLORFUL']
     ]);
     const armorMap = new Map([
         ["探险者铁甲", "PLATE"],["探险者皮甲", "LEATHER"],["探险者布甲", "CLOTH"],
         ["旅法师的灵光袍", "CLOAK"],["战线支撑者的荆棘重甲", "THORN"],["复苏战衣", "WOOD"],
-        ["挑战斗篷", "CAPE"],["复苏木甲", "WOOD"]
+        ["挑战斗篷", "CAPE"]
     ]);
     const equipOldMap = new Map([['饮血长枪','SPEAR'],['荆棘剑盾','SHIELD'],["复苏木甲", "WOOD"]]);
     const haloMap = new Map([
