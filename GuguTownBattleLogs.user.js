@@ -517,7 +517,7 @@ async function fyg_pk_html() {
             value: [now.getFullYear(), now.getMonth()+1, now.getDate()],
             active:await getDaysOfLog(),
             success: async function (res) {
-                await detaillogpanelset(res)
+                await setDetaillogpanelByday(res)
                 $(".tc_xs").fadeIn();
                 mask.style.display = "block";
             }
@@ -557,7 +557,7 @@ async function fyg_pk_html() {
         $("#showlogbyid").click(async function(){
             var searchname = prompt("请输入要查询的用户名")
             if(searchname!=""){
-                await detaillogpanelsetbyname(searchname)
+                await setDetaillogpanelByname(searchname)
                 $(".tc_xs").fadeIn();
                 mask.style.display = "block";
             }
@@ -578,44 +578,34 @@ async function fyg_pk_html() {
         })
     }
 
+    async function setDetaillogpanelByday(key){
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3><span style="width: 60px">{time}</span><span style="width: 120px;">{name}</span>'+
+            (showSM?'<span style="width: 70px;">{xishu}</span>':"")+
+            (showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            '</h3></div><div style="display:none;">{log}</div></div>';
+        let during_s = 24 * 60 * 60 * 1000
+        let day = getLocDate(key)
+        let day_ = new Date(day.getTime() + during_s)
+        let items = await db.battleLog.where("time").between(day,day_,true,false).and(item => item.username == user).sortBy('time');
+        setDetaillogpanel(divtext, items);
+    }
+    async function setDetaillogpanelByname(enemyname){
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3><span style="width: 100px;">{date}</span><span style="width: 120px;">{name}</span>'+
+            (showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            '</h3></div><div style="display:none;">{log}</div></div>';
+        let items = await db.battleLog.where({username:user,enemyname:enemyname}).sortBy('time')
+        setDetaillogpanel(divtext, items);
+    }
 
-    async function detaillogpanelset(key){
-        var text = '';
-        var divtext = '<div class="detaillogitem {0}"><div class="nameandlevel"><h3><span style="width: 120px;">{1}</span>'+
-            (showSM?'<span style="width: 70px;">{2}</span>':"")+
-            (showcharlv?'<span style="width: 40px;">{3}</span><span style="width: 80px;">{4}</span>':'')+
-            '</h3></div><div style="display:none;">{5}</div></div>';
-
-        var during_s = 24 * 60 * 60 * 1000
-        var day = getLocDate(key)
-        var day_ = new Date(day.getTime() + during_s)
-        var item = await db.battleLog.where("time").between(day,day_,true,false).and(item => item.username == user).sortBy('time')
-        if(item.length == 0){
-            text+=divtext.format("","无数据","","","","");
+    async function setDetaillogpanel(divtext, items){
+        let text = '';
+        let len=items.length;
+        if(len === 0){
+            let emptyDivLogData = {thisclass:"",name: "无数据",xishu: "",char:"",charlv:"",log: "",time:"",date:""}
+            text+=divtext.format(emptyDivLogData);
         }else{
-            var len=item.length;
-            for(var i=len-1;i>=0;i--){
-                var thisclass = '';
-                var thisitem = item[i]
-                if(thisitem.isWin === true){
-                    thisclass="battlewin"
-                }else if(thisitem.isWin === false){
-                    thisclass="battlelose"
-                }else if(thisitem.isWin === 0){
-                    thisclass="battletie"
-                }
-
-                let name = thisitem.enemyname
-                let xishu = get_enemylevel(name)
-                if(xishu!=""){
-                    xishu = "SM:"+xishu;
-                }
-                let char = thisitem.char
-                let charlv = "LV:"+thisitem.charlevel
-
-                text+=divtext.format(thisclass,name,xishu,char,charlv,thisitem.log);
-
-
+            for(let i=len-1;i>=0;i--){
+               text+= makeDetaillogitem(divtext, items[i])
             }
         }
         detaillogpanel.innerHTML = text;
@@ -626,47 +616,27 @@ async function fyg_pk_html() {
 
         $('[data-toggle="tooltip"]').tooltip();
     }
-
-    async function detaillogpanelsetbyname(key){
-        var text = '';
-        var divtext = '<div class="detaillogitem {0}"><div class="nameandlevel"><h3><span style="width: 120px;">{1}</span>'+
-            (showcharlv?'<span style="width: 40px;">{2}</span><span style="width: 80px;">{3}</span>':'')+
-            '<span style="width: 100px;">{4}</span>'+
-            '</h3></div><div style="display:none;">{5}</div></div>';
-
-        var item = await db.battleLog.where({username:user,enemyname:key}).sortBy('time')
-        if(item.length == 0){
-            text+=divtext.format("","无数据","","","","");
-        }else{
-            var len=item.length;
-            for(var i=len-1;i>=0;i--){
-                var thisclass = '';
-                var thisitem = item[i]
-                if(thisitem.isWin === true){
-                    thisclass="battlewin"
-                }else if(thisitem.isWin === false){
-                    thisclass="battlelose"
-                }else if(thisitem.isWin === 0){
-                    thisclass="battletie"
-                }
-
-                let name = thisitem.enemyname
-                let char = thisitem.char
-                let charlv = "LV:"+thisitem.charlevel
-                let thistime = getDateString(thisitem.time)
-
-                text+=divtext.format(thisclass,name,char,charlv,thistime,thisitem.log);
-
-
-            }
+    function makeDetaillogitem(divtext, item){
+        let thisclass = '';
+        let date = getDateString(item.time);
+        let time = item.time.getHours().toString().padStart(2,'0')+":"+item.time.getMinutes().toString().padStart(2,'0');
+        if(item.isWin === true){
+            thisclass="battlewin"
+        }else if(item.isWin === false){
+            thisclass="battlelose"
+        }else if(item.isWin === 0){
+            thisclass="battletie"
         }
-        detaillogpanel.innerHTML = text;
 
-        $(".nameandlevel").click(function(){
-            $(this).next().toggle(200);
-        });
-
-        $('[data-toggle="tooltip"]').tooltip();
+        let name = item.enemyname
+        let xishu = get_enemylevel(name)
+        if(xishu!=""){
+            xishu = "SM:"+xishu;
+        }
+        let char = item.char
+        let charlv = "LV:"+item.charlevel
+        let divLogData = {thisclass,name,xishu,char,charlv,log: item.log,time,date};
+        return divtext.format(divLogData);
     }
 
     let observerBody1 = new MutationObserver(async ()=>{ //战斗记录
