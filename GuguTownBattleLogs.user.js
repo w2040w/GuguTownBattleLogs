@@ -56,13 +56,27 @@ async function fyg_pk_html() {
     unsafeWindow.BattleLog = BattleLog;
     await transToDbdata();
 
-    var showSM = true;
-    var showcharlv = true;
-    if(localStorage.getItem('showSM')!==null){
-        showSM = eval(localStorage.getItem('showSM'));
+    const checkboxids = ["showSM", "showcharlv"];
+    let config = {};
+    let jsonRaw = localStorage.getItem("battlelogConfig");
+    if(typeof jsonRaw === "string"){
+        config = JSON.parse(jsonRaw);
     }
-    if(localStorage.getItem('showcharlv')!==null){
-        showcharlv = eval(localStorage.getItem('showcharlv'));
+    function saveConfig(){
+        let raw = JSON.stringify(config);
+        localStorage.setItem("battlelogConfig", raw);
+    }
+    function initConfigDetail(checkboxid){
+        let value = config[checkboxid];
+        if(typeof value !== 'boolean'){
+            config[checkboxid]= true;
+        }
+    }
+    for(let checkboxid of checkboxids){
+        initConfigDetail(checkboxid);
+    }
+    if(typeof config.queryMaxDay === "number"){
+        config.queryMaxDay = 7;
     }
 
     var mainHost = "0"
@@ -523,26 +537,20 @@ async function fyg_pk_html() {
             }
         })
 
-        $('#showSM').attr("checked", showSM);
-        $("#showSM").change(function(){
-            if (this.checked == true){
-                showSM = true;
-                localStorage.setItem('showSM',true );
-            }else{
-                showSM = false;
-                localStorage.setItem('showSM',false );
-            }
-        })
-        $('#showcharlv').attr("checked", showcharlv);
-        $("#showcharlv").change(function(){
-            if (this.checked == true){
-                showcharlv = true;
-                localStorage.setItem('showcharlv',true );
-            }else{
-                showcharlv = false;
-                localStorage.setItem('showcharlv',false );
-            }
-        })
+        function initCheckbox(checkid){
+            $('#'+checkid).prop("checked", config[checkid]);
+            $("#"+checkid).change(function(){
+                if (this.checked === true){
+                    config[checkid] = true;
+                }else{
+                    config[checkid] = false;
+                }
+                saveConfig();
+            })
+        }
+        for(let checkboxid of checkboxids){
+            initCheckbox(checkboxid);
+        }
 
         $("#deletelog").click(function(){
             var dayss = parseInt(prompt("将多少天以前的战斗记录清除？\n警告：删除的记录无法恢复，假如填0将删除所有记录"))
@@ -580,8 +588,8 @@ async function fyg_pk_html() {
 
     async function setDetaillogpanelByday(key){
         let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3><span style="width: 60px">{time}</span><span style="width: 120px;">{name}</span>'+
-            (showSM?'<span style="width: 70px;">{xishu}</span>':"")+
-            (showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            (config.showSM?'<span style="width: 70px;">{xishu}</span>':"")+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
             '</h3></div><div style="display:none;">{log}</div></div>';
         let during_s = 24 * 60 * 60 * 1000
         let day = getLocDate(key)
@@ -591,7 +599,7 @@ async function fyg_pk_html() {
     }
     async function setDetaillogpanelByname(enemyname){
         let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3><span style="width: 100px;">{date}</span><span style="width: 120px;">{name}</span>'+
-            (showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
             '</h3></div><div style="display:none;">{log}</div></div>';
         let items = await db.battleLog.where({username:user,enemyname:enemyname}).sortBy('time')
         setDetaillogpanel(divtext, items);
