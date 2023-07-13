@@ -75,7 +75,7 @@ async function fyg_pk_html() {
     for(let checkboxid of checkboxids){
         initConfigDetail(checkboxid);
     }
-    if(typeof config.queryMaxDay === "number"){
+    if(typeof config.queryMaxDay !== "number"){
         config.queryMaxDay = 7;
     }
 
@@ -490,18 +490,49 @@ async function fyg_pk_html() {
         <input type="checkbox" id="showcharlv" style="width: 20px;">记录显示等级</input>
         </div>
         <div>
-        <input type="button" class="btn" value="手动删除记录" id="deletelog"></input>
         <input type="button" class="btn" value="根据用户名查询记录" id="showlogbyid"></input>
+        <input type="button" class="btn" value="根据角色名查询记录" id="showlogbychar"></input>
+        </div>
+        <dialog id="charQueryDialog">
+            <form method="dialog">
+              <input required type="number" value="7" id="daylimit" style="width: 40px;">天内</input>
+                  <input  value="默" id="char" style="width: 40px;margin-right:15px;"></input>
+              <div>
+                  <button class="cancelBtn">Cancel</button>
+                  <button class="confirmBtn">Confirm</button>
+              </div>
+            </form>
+        </dialog>
         </div>
         <div>
         <input type="button" class="btn" value="导出历史" id="exportlog"></input>
         <span style="width:20px;display: inline-block;"></span>
         导入历史：<input type="file" class="btn" value="导入历史" id="importlog" accept=".ggzjson" style="width: 90px;height:32px;display: inline-block;"></input>
         </div>
+        <div>
+        <input type="button" class="btn btn-danger" value="手动删除记录" id="deletelog"></input>
+        </div>
         `
         goxpanelExtend.setAttribute('id','goxpanelExtend');
         goxpanelExtend.style.setProperty('max-width', (document.body.clientWidth-1300)/2+'px');
 
+        const charQueryDialog = document.getElementById('charQueryDialog');
+        $("#showlogbychar").click(()=>charQueryDialog.showModal());
+        $("#charQueryDialog .cancelBtn").click(()=>charQueryDialog.close());
+        $("#daylimit").val(config.queryMaxDay);
+        $("#charQueryDialog .confirmBtn").click(async function(){
+            let searchname = $("#char").val();
+            let limitday = parseInt($("#daylimit").val());
+            if(!isNaN(limitday) && limitday !== config.queryMaxDay){
+                config.queryMaxDay = limitday;
+                saveConfig();
+            }
+            if(searchname!=="" && searchname !== null && !isNaN(limitday)){
+                await setDetaillogpanelBychar(searchname, limitday);
+                $(".tc_xs").fadeIn();
+                mask.style.display = "block";
+            }
+        })
         $("#showTop").click(async function(){
             var during = parseInt($("#TopDuring")[0].value)
             var num = parseInt($("#TopNum")[0].value)
@@ -587,21 +618,34 @@ async function fyg_pk_html() {
     }
 
     async function setDetaillogpanelByday(key){
-        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3><span style="width: 60px">{time}</span><span style="width: 120px;">{name}</span>'+
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
+            '<span style="width: 60px">{time}</span><span style="width: 120px;">{name}</span>'+
             (config.showSM?'<span style="width: 70px;">{xishu}</span>':"")+
             (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
             '</h3></div><div style="display:none;">{log}</div></div>';
-        let during_s = 24 * 60 * 60 * 1000
-        let day = getLocDate(key)
-        let day_ = new Date(day.getTime() + during_s)
+        let during_s = 24 * 60 * 60 * 1000;
+        let day = getLocDate(key);
+        let day_ = new Date(day.getTime() + during_s);
         let items = await db.battleLog.where("time").between(day,day_,true,false).and(item => item.username == user).sortBy('time');
         setDetaillogpanel(divtext, items);
     }
     async function setDetaillogpanelByname(enemyname){
-        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3><span style="width: 100px;">{date}</span><span style="width: 120px;">{name}</span>'+
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
+            '<span style="width: 100px;">{date}</span><span style="width: 120px;">{name}</span>'+
             (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
             '</h3></div><div style="display:none;">{log}</div></div>';
-        let items = await db.battleLog.where({username:user,enemyname:enemyname}).sortBy('time')
+        let items = await db.battleLog.where({username:user,enemyname:enemyname}).sortBy('time');
+        setDetaillogpanel(divtext, items);
+    }
+    async function setDetaillogpanelBychar(charname, maxQueryDay){
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
+            '<span style="width: 100px;">{monthday}  {time}</span><span style="width: 120px;">{name}</span>'+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            '</h3></div><div style="display:none;">{log}</div></div>';
+        let during_s = maxQueryDay * 24 * 60 * 60 * 1000
+        let day_ = new Date()
+        let day = new Date(day_.getTime() - during_s)
+        let items = await db.battleLog.where("time").between(day,day_,true,false).and(item => item.char === charname).sortBy('time');
         setDetaillogpanel(divtext, items);
     }
 
@@ -609,11 +653,11 @@ async function fyg_pk_html() {
         let text = '';
         let len=items.length;
         if(len === 0){
-            let emptyDivLogData = {thisclass:"",name: "无数据",xishu: "",char:"",charlv:"",log: "",time:"",date:""}
+            let emptyDivLogData = {thisclass:"",name: "无数据",xishu: "",char:"",charlv:"",log: "",time:"",date:""};
             text+=divtext.format(emptyDivLogData);
         }else{
             for(let i=len-1;i>=0;i--){
-               text+= makeDetaillogitem(divtext, items[i])
+               text+= makeDetaillogitem(divtext, items[i]);
             }
         }
         detaillogpanel.innerHTML = text;
@@ -624,26 +668,30 @@ async function fyg_pk_html() {
 
         $('[data-toggle="tooltip"]').tooltip();
     }
+    function fillzero(numStr, pos){
+        return numStr.toString().padStart(pos,'0');
+    }
     function makeDetaillogitem(divtext, item){
         let thisclass = '';
         let date = getDateString(item.time);
-        let time = item.time.getHours().toString().padStart(2,'0')+":"+item.time.getMinutes().toString().padStart(2,'0');
+        let monthday = fillzero(item.time.getMonth(), 2)+'/'+fillzero(item.time.getDate(), 2);
+        let time = fillzero(item.time.getHours(), 2)+":"+fillzero(item.time.getMinutes(), 2);
         if(item.isWin === true){
-            thisclass="battlewin"
+            thisclass="battlewin";
         }else if(item.isWin === false){
-            thisclass="battlelose"
+            thisclass="battlelose";
         }else if(item.isWin === 0){
-            thisclass="battletie"
+            thisclass="battletie";
         }
 
-        let name = item.enemyname
-        let xishu = get_enemylevel(name)
+        let name = item.enemyname;
+        let xishu = get_enemylevel(name);
         if(xishu!=""){
             xishu = "SM:"+xishu;
         }
-        let char = item.char
-        let charlv = "LV:"+item.charlevel
-        let divLogData = {thisclass,name,xishu,char,charlv,log: item.log,time,date};
+        let char = item.char;
+        let charlv = "LV:"+item.charlevel;
+        let divLogData = {thisclass,name,xishu,char,charlv,log: item.log,time,date,monthday};
         return divtext.format(divLogData);
     }
 
