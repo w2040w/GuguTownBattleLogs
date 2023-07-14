@@ -56,7 +56,7 @@ async function fyg_pk_html() {
     unsafeWindow.BattleLog = BattleLog;
     await transToDbdata();
 
-    const checkboxids = ["showSM", "showcharlv"];
+    const checkboxids = ["showSM", "showcharlv","userRegexQuery"];
     let config = {};
     let jsonRaw = localStorage.getItem("battlelogConfig");
     if(typeof jsonRaw === "string"){
@@ -490,13 +490,24 @@ async function fyg_pk_html() {
         <input type="checkbox" id="showcharlv" style="width: 20px;">记录显示等级</input>
         </div>
         <div>
-        <input type="button" class="btn" value="根据用户名查询记录" id="showlogbyid"></input>
-        <input type="button" class="btn" value="根据角色名查询记录" id="showlogbychar"></input>
+        查询记录：
+        <input type="button" class="btn" value="根据用户名" id="showlogbyid"></input>
+        <input type="button" class="btn" value="根据角色名" id="showlogbychar"></input>
         </div>
+        <dialog id="userQueryDialog">
+            <form method="dialog">
+              <input type="checkbox" id="userRegexQuery" style="width: 20px;">包含该词</input>
+              <input autofocus class="username"></input>
+              <div>
+                  <button class="cancelBtn">Cancel</button>
+                  <button class="confirmBtn">Confirm</button>
+              </div>
+            </form>
+        </dialog>
         <dialog id="charQueryDialog">
             <form method="dialog">
               <input required type="number" value="7" id="daylimit" style="width: 40px;">天内</input>
-                  <input  value="默" id="char" style="width: 40px;margin-right:15px;"></input>
+                  <input autofocus class="char" style="width: 40px;margin-right:15px;"></input>
               <div>
                   <button class="cancelBtn">Cancel</button>
                   <button class="confirmBtn">Confirm</button>
@@ -516,23 +527,6 @@ async function fyg_pk_html() {
         goxpanelExtend.setAttribute('id','goxpanelExtend');
         goxpanelExtend.style.setProperty('max-width', (document.body.clientWidth-1300)/2+'px');
 
-        const charQueryDialog = document.getElementById('charQueryDialog');
-        $("#showlogbychar").click(()=>charQueryDialog.showModal());
-        $("#charQueryDialog .cancelBtn").click(()=>charQueryDialog.close());
-        $("#daylimit").val(config.queryMaxDay);
-        $("#charQueryDialog .confirmBtn").click(async function(){
-            let searchname = $("#char").val();
-            let limitday = parseInt($("#daylimit").val());
-            if(!isNaN(limitday) && limitday !== config.queryMaxDay){
-                config.queryMaxDay = limitday;
-                saveConfig();
-            }
-            if(searchname!=="" && searchname !== null && !isNaN(limitday)){
-                await setDetaillogpanelBychar(searchname, limitday);
-                $(".tc_xs").fadeIn();
-                mask.style.display = "block";
-            }
-        })
         $("#showTop").click(async function(){
             var during = parseInt($("#TopDuring")[0].value)
             var num = parseInt($("#TopNum")[0].value)
@@ -593,14 +587,43 @@ async function fyg_pk_html() {
             }
         })
 
-        $("#showlogbyid").click(async function(){
-            var searchname = prompt("请输入要查询的用户名")
-            if(searchname!=""){
-                await setDetaillogpanelByname(searchname)
+       async function userQuery(){
+            let searchname = $("#userQueryDialog .username").val();
+            let userRegexQuery = config.userRegexQuery;
+            if(searchname!=="" && searchname !== null){
+                if(userRegexQuery){
+                    await setDetaillogpanelBynameRegex(searchname);
+                } else {
+                    await setDetaillogpanelByname(searchname);
+                }
                 $(".tc_xs").fadeIn();
                 mask.style.display = "block";
             }
-        })
+        }
+        async function charQuery(){
+            let searchname = $("#charQueryDialog .char").val();
+            let limitday = parseInt($("#daylimit").val());
+            if(!isNaN(limitday) && limitday !== config.queryMaxDay){
+                config.queryMaxDay = limitday;
+                saveConfig();
+            }
+            if(searchname!=="" && searchname !== null && !isNaN(limitday)){
+                await setDetaillogpanelBychar(searchname, limitday);
+                $(".tc_xs").fadeIn();
+                mask.style.display = "block";
+            }
+        }
+
+        function initQueryDialog(dialogid, btnid, sumbitfunc){
+            const queryDialog = document.getElementById(dialogid);
+            $("#"+btnid).click(()=>queryDialog.showModal());
+            $("#"+dialogid+" .cancelBtn").click(()=>queryDialog.close());
+            $("#"+dialogid+" .confirmBtn").click(sumbitfunc);
+            $("#"+dialogid).on('keypress',(e) => {if(e.which === 13) sumbitfunc();});
+        }
+        initQueryDialog("userQueryDialog", "showlogbyid", userQuery);
+        initQueryDialog("charQueryDialog", "showlogbychar", charQuery);
+        $("#daylimit").val(config.queryMaxDay);
 
         $("#exportlog").click(async function(){
             let dbblob = await db.export();
@@ -637,6 +660,19 @@ async function fyg_pk_html() {
         let items = await db.battleLog.where({username:user,enemyname:enemyname}).sortBy('time');
         setDetaillogpanel(divtext, items);
     }
+    async function setDetaillogpanelBynameRegex(enemynameRegex){
+        const queryLimit = 50;
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
+            '<span style="width: 100px;">{date}</span><span style="width: 120px;">{name}</span>'+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            '</h3></div><div style="display:none;">{log}</div></div>';
+        let items = await db.battleLog.where({username:user}).and(item =>{
+            let reg = new RegExp(enemynameRegex, "i");
+            return reg.test(item.enemyname);
+        }).limit(queryLimit).sortBy('time');
+
+        setDetaillogpanel(divtext, items);
+    }
     async function setDetaillogpanelBychar(charname, maxQueryDay){
         let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
             '<span style="width: 100px;">{monthday}  {time}</span><span style="width: 120px;">{name}</span>'+
@@ -653,7 +689,7 @@ async function fyg_pk_html() {
         let text = '';
         let len=items.length;
         if(len === 0){
-            let emptyDivLogData = {thisclass:"",name: "无数据",xishu: "",char:"",charlv:"",log: "",time:"",date:""};
+            let emptyDivLogData = {thisclass:"",name: "无数据",xishu: "",char:"",charlv:"",log: "",time:"",date:"",monthday:""};
             text+=divtext.format(emptyDivLogData);
         }else{
             for(let i=len-1;i>=0;i--){
@@ -674,7 +710,7 @@ async function fyg_pk_html() {
     function makeDetaillogitem(divtext, item){
         let thisclass = '';
         let date = getDateString(item.time);
-        let monthday = fillzero(item.time.getMonth(), 2)+'/'+fillzero(item.time.getDate(), 2);
+        let monthday = fillzero(item.time.getMonth()+1, 2)+'/'+fillzero(item.time.getDate(), 2);
         let time = fillzero(item.time.getHours(), 2)+":"+fillzero(item.time.getMinutes(), 2);
         if(item.isWin === true){
             thisclass="battlewin";
