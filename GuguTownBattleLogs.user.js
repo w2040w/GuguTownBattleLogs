@@ -56,13 +56,27 @@ async function fyg_pk_html() {
     unsafeWindow.BattleLog = BattleLog;
     await transToDbdata();
 
-    var showSM = true;
-    var showcharlv = true;
-    if(localStorage.getItem('showSM')!==null){
-        showSM = eval(localStorage.getItem('showSM'));
+    const checkboxids = ["showSM", "showcharlv","userRegexQuery"];
+    let config = {};
+    let jsonRaw = localStorage.getItem("battlelogConfig");
+    if(typeof jsonRaw === "string"){
+        config = JSON.parse(jsonRaw);
     }
-    if(localStorage.getItem('showcharlv')!==null){
-        showcharlv = eval(localStorage.getItem('showcharlv'));
+    function saveConfig(){
+        let raw = JSON.stringify(config);
+        localStorage.setItem("battlelogConfig", raw);
+    }
+    function initConfigDetail(checkboxid){
+        let value = config[checkboxid];
+        if(typeof value !== 'boolean'){
+            config[checkboxid]= true;
+        }
+    }
+    for(let checkboxid of checkboxids){
+        initConfigDetail(checkboxid);
+    }
+    if(typeof config.queryMaxDay !== "number"){
+        config.queryMaxDay = 7;
     }
 
     var mainHost = "0"
@@ -476,13 +490,38 @@ async function fyg_pk_html() {
         <input type="checkbox" id="showcharlv" style="width: 20px;">记录显示等级</input>
         </div>
         <div>
-        <input type="button" class="btn" value="手动删除记录" id="deletelog"></input>
-        <input type="button" class="btn" value="根据用户名查询记录" id="showlogbyid"></input>
+        查询记录：
+        <input type="button" class="btn" value="根据用户名" id="showlogbyid"></input>
+        <input type="button" class="btn" value="根据角色名" id="showlogbychar"></input>
+        </div>
+        <dialog id="userQueryDialog">
+            <form method="dialog">
+              <input type="checkbox" id="userRegexQuery" style="width: 20px;">包含该词</input>
+              <input autofocus class="username"></input>
+              <div>
+                  <button class="cancelBtn">Cancel</button>
+                  <button class="confirmBtn">Confirm</button>
+              </div>
+            </form>
+        </dialog>
+        <dialog id="charQueryDialog">
+            <form method="dialog">
+              <input required type="number" value="7" id="daylimit" style="width: 40px;">天内</input>
+                  <input autofocus class="char" style="width: 40px;margin-right:15px;"></input>
+              <div>
+                  <button class="cancelBtn">Cancel</button>
+                  <button class="confirmBtn">Confirm</button>
+              </div>
+            </form>
+        </dialog>
         </div>
         <div>
         <input type="button" class="btn" value="导出历史" id="exportlog"></input>
         <span style="width:20px;display: inline-block;"></span>
         导入历史：<input type="file" class="btn" value="导入历史" id="importlog" accept=".ggzjson" style="width: 90px;height:32px;display: inline-block;"></input>
+        </div>
+        <div>
+        <input type="button" class="btn btn-danger" value="手动删除记录" id="deletelog"></input>
         </div>
         `
         goxpanelExtend.setAttribute('id','goxpanelExtend');
@@ -517,32 +556,26 @@ async function fyg_pk_html() {
             value: [now.getFullYear(), now.getMonth()+1, now.getDate()],
             active:await getDaysOfLog(),
             success: async function (res) {
-                await detaillogpanelset(res)
+                await setDetaillogpanelByday(res)
                 $(".tc_xs").fadeIn();
                 mask.style.display = "block";
             }
         })
 
-        $('#showSM').attr("checked", showSM);
-        $("#showSM").change(function(){
-            if (this.checked == true){
-                showSM = true;
-                localStorage.setItem('showSM',true );
-            }else{
-                showSM = false;
-                localStorage.setItem('showSM',false );
-            }
-        })
-        $('#showcharlv').attr("checked", showcharlv);
-        $("#showcharlv").change(function(){
-            if (this.checked == true){
-                showcharlv = true;
-                localStorage.setItem('showcharlv',true );
-            }else{
-                showcharlv = false;
-                localStorage.setItem('showcharlv',false );
-            }
-        })
+        function initCheckbox(checkid){
+            $('#'+checkid).prop("checked", config[checkid]);
+            $("#"+checkid).change(function(){
+                if (this.checked === true){
+                    config[checkid] = true;
+                }else{
+                    config[checkid] = false;
+                }
+                saveConfig();
+            })
+        }
+        for(let checkboxid of checkboxids){
+            initCheckbox(checkboxid);
+        }
 
         $("#deletelog").click(function(){
             var dayss = parseInt(prompt("将多少天以前的战斗记录清除？\n警告：删除的记录无法恢复，假如填0将删除所有记录"))
@@ -554,14 +587,43 @@ async function fyg_pk_html() {
             }
         })
 
-        $("#showlogbyid").click(async function(){
-            var searchname = prompt("请输入要查询的用户名")
-            if(searchname!=""){
-                await detaillogpanelsetbyname(searchname)
+       async function userQuery(){
+            let searchname = $("#userQueryDialog .username").val();
+            let userRegexQuery = config.userRegexQuery;
+            if(searchname!=="" && searchname !== null){
+                if(userRegexQuery){
+                    await setDetaillogpanelBynameRegex(searchname);
+                } else {
+                    await setDetaillogpanelByname(searchname);
+                }
                 $(".tc_xs").fadeIn();
                 mask.style.display = "block";
             }
-        })
+        }
+        async function charQuery(){
+            let searchname = $("#charQueryDialog .char").val();
+            let limitday = parseInt($("#daylimit").val());
+            if(!isNaN(limitday) && limitday !== config.queryMaxDay){
+                config.queryMaxDay = limitday;
+                saveConfig();
+            }
+            if(searchname!=="" && searchname !== null && !isNaN(limitday)){
+                await setDetaillogpanelBychar(searchname, limitday);
+                $(".tc_xs").fadeIn();
+                mask.style.display = "block";
+            }
+        }
+
+        function initQueryDialog(dialogid, btnid, sumbitfunc){
+            const queryDialog = document.getElementById(dialogid);
+            $("#"+btnid).click(()=>queryDialog.showModal());
+            $("#"+dialogid+" .cancelBtn").click(()=>queryDialog.close());
+            $("#"+dialogid+" .confirmBtn").click(sumbitfunc);
+            $("#"+dialogid).on('keypress',(e) => {if(e.which === 13) sumbitfunc();});
+        }
+        initQueryDialog("userQueryDialog", "showlogbyid", userQuery);
+        initQueryDialog("charQueryDialog", "showlogbychar", charQuery);
+        $("#daylimit").val(config.queryMaxDay);
 
         $("#exportlog").click(async function(){
             let dbblob = await db.export();
@@ -578,44 +640,60 @@ async function fyg_pk_html() {
         })
     }
 
+    async function setDetaillogpanelByday(key){
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
+            '<span style="width: 60px">{time}</span><span style="width: 120px;">{name}</span>'+
+            (config.showSM?'<span style="width: 70px;">{xishu}</span>':"")+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            '</h3></div><div style="display:none;">{log}</div></div>';
+        let during_s = 24 * 60 * 60 * 1000;
+        let day = getLocDate(key);
+        let day_ = new Date(day.getTime() + during_s);
+        let items = await db.battleLog.where("time").between(day,day_,true,false).and(item => item.username == user).sortBy('time');
+        setDetaillogpanel(divtext, items);
+    }
+    async function setDetaillogpanelByname(enemyname){
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
+            '<span style="width: 100px;">{date}</span><span style="width: 120px;">{name}</span>'+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            '</h3></div><div style="display:none;">{log}</div></div>';
+        let items = await db.battleLog.where({username:user,enemyname:enemyname}).sortBy('time');
+        setDetaillogpanel(divtext, items);
+    }
+    async function setDetaillogpanelBynameRegex(enemynameRegex){
+        const queryLimit = 50;
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
+            '<span style="width: 100px;">{date}</span><span style="width: 120px;">{name}</span>'+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            '</h3></div><div style="display:none;">{log}</div></div>';
+        let items = await db.battleLog.where({username:user}).and(item =>{
+            let reg = new RegExp(enemynameRegex, "i");
+            return reg.test(item.enemyname);
+        }).limit(queryLimit).sortBy('time');
 
-    async function detaillogpanelset(key){
-        var text = '';
-        var divtext = '<div class="detaillogitem {0}"><div class="nameandlevel"><h3><span style="width: 120px;">{1}</span>'+
-            (showSM?'<span style="width: 70px;">{2}</span>':"")+
-            (showcharlv?'<span style="width: 40px;">{3}</span><span style="width: 80px;">{4}</span>':'')+
-            '</h3></div><div style="display:none;">{5}</div></div>';
+        setDetaillogpanel(divtext, items);
+    }
+    async function setDetaillogpanelBychar(charname, maxQueryDay){
+        let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
+            '<span style="width: 100px;">{monthday}  {time}</span><span style="width: 120px;">{name}</span>'+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            '</h3></div><div style="display:none;">{log}</div></div>';
+        let during_s = maxQueryDay * 24 * 60 * 60 * 1000
+        let day_ = new Date()
+        let day = new Date(day_.getTime() - during_s)
+        let items = await db.battleLog.where("time").between(day,day_,true,false).and(item => item.char === charname).sortBy('time');
+        setDetaillogpanel(divtext, items);
+    }
 
-        var during_s = 24 * 60 * 60 * 1000
-        var day = getLocDate(key)
-        var day_ = new Date(day.getTime() + during_s)
-        var item = await db.battleLog.where("time").between(day,day_,true,false).and(item => item.username == user).sortBy('time')
-        if(item.length == 0){
-            text+=divtext.format("","无数据","","","","");
+    async function setDetaillogpanel(divtext, items){
+        let text = '';
+        let len=items.length;
+        if(len === 0){
+            let emptyDivLogData = {thisclass:"",name: "无数据",xishu: "",char:"",charlv:"",log: "",time:"",date:"",monthday:""};
+            text+=divtext.format(emptyDivLogData);
         }else{
-            var len=item.length;
-            for(var i=len-1;i>=0;i--){
-                var thisclass = '';
-                var thisitem = item[i]
-                if(thisitem.isWin === true){
-                    thisclass="battlewin"
-                }else if(thisitem.isWin === false){
-                    thisclass="battlelose"
-                }else if(thisitem.isWin === 0){
-                    thisclass="battletie"
-                }
-
-                let name = thisitem.enemyname
-                let xishu = get_enemylevel(name)
-                if(xishu!=""){
-                    xishu = "SM:"+xishu;
-                }
-                let char = thisitem.char
-                let charlv = "LV:"+thisitem.charlevel
-
-                text+=divtext.format(thisclass,name,xishu,char,charlv,thisitem.log);
-
-
+            for(let i=len-1;i>=0;i--){
+               text+= makeDetaillogitem(divtext, items[i]);
             }
         }
         detaillogpanel.innerHTML = text;
@@ -626,47 +704,31 @@ async function fyg_pk_html() {
 
         $('[data-toggle="tooltip"]').tooltip();
     }
-
-    async function detaillogpanelsetbyname(key){
-        var text = '';
-        var divtext = '<div class="detaillogitem {0}"><div class="nameandlevel"><h3><span style="width: 120px;">{1}</span>'+
-            (showcharlv?'<span style="width: 40px;">{2}</span><span style="width: 80px;">{3}</span>':'')+
-            '<span style="width: 100px;">{4}</span>'+
-            '</h3></div><div style="display:none;">{5}</div></div>';
-
-        var item = await db.battleLog.where({username:user,enemyname:key}).sortBy('time')
-        if(item.length == 0){
-            text+=divtext.format("","无数据","","","","");
-        }else{
-            var len=item.length;
-            for(var i=len-1;i>=0;i--){
-                var thisclass = '';
-                var thisitem = item[i]
-                if(thisitem.isWin === true){
-                    thisclass="battlewin"
-                }else if(thisitem.isWin === false){
-                    thisclass="battlelose"
-                }else if(thisitem.isWin === 0){
-                    thisclass="battletie"
-                }
-
-                let name = thisitem.enemyname
-                let char = thisitem.char
-                let charlv = "LV:"+thisitem.charlevel
-                let thistime = getDateString(thisitem.time)
-
-                text+=divtext.format(thisclass,name,char,charlv,thistime,thisitem.log);
-
-
-            }
+    function fillzero(numStr, pos){
+        return numStr.toString().padStart(pos,'0');
+    }
+    function makeDetaillogitem(divtext, item){
+        let thisclass = '';
+        let date = getDateString(item.time);
+        let monthday = fillzero(item.time.getMonth()+1, 2)+'/'+fillzero(item.time.getDate(), 2);
+        let time = fillzero(item.time.getHours(), 2)+":"+fillzero(item.time.getMinutes(), 2);
+        if(item.isWin === true){
+            thisclass="battlewin";
+        }else if(item.isWin === false){
+            thisclass="battlelose";
+        }else if(item.isWin === 0){
+            thisclass="battletie";
         }
-        detaillogpanel.innerHTML = text;
 
-        $(".nameandlevel").click(function(){
-            $(this).next().toggle(200);
-        });
-
-        $('[data-toggle="tooltip"]').tooltip();
+        let name = item.enemyname;
+        let xishu = get_enemylevel(name);
+        if(xishu!=""){
+            xishu = "SM:"+xishu;
+        }
+        let char = item.char;
+        let charlv = "LV:"+item.charlevel;
+        let divLogData = {thisclass,name,xishu,char,charlv,log: item.log,time,date,monthday};
+        return divtext.format(divLogData);
     }
 
     let observerBody1 = new MutationObserver(async ()=>{ //战斗记录
