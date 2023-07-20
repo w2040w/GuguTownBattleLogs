@@ -56,7 +56,7 @@ async function fyg_pk_html() {
     unsafeWindow.BattleLog = BattleLog;
     await transToDbdata();
 
-    const checkboxids = ["showSM", "showcharlv","userRegexQuery"];
+    const checkboxids = ["showSM", "showcharlv", "userRegexQuery", "showArmor", "showDamage", "showAttr", "showHalo"];
     let config = {};
     let jsonRaw = localStorage.getItem("battlelogConfig");
     if(typeof jsonRaw === "string"){
@@ -72,6 +72,7 @@ async function fyg_pk_html() {
             config[checkboxid]= true;
         }
     }
+    initConfigDetail("showExtrainfo");
     for(let checkboxid of checkboxids){
         initConfigDetail(checkboxid);
     }
@@ -490,6 +491,15 @@ async function fyg_pk_html() {
         <input type="checkbox" id="showcharlv" style="width: 20px;">记录显示等级</input>
         </div>
         <div>
+        <input type="checkbox" id="showExtrainfo" style="width: 20px;">显示额外信息</input>
+        </div>
+        <div class="hidden" id="extrainfo">
+        <input type="checkbox" id="showArmor" style="width: 20px;">防具</input>
+        <input type="checkbox" id="showDamage" style="width: 20px;">伤害比例</input>
+        <input type="checkbox" id="showAttr" style="width: 20px;">加点</input>
+        <input type="checkbox" id="showHalo" style="width: 20px;">光环</input>
+        </div>
+        <div>
         查询记录：
         <input type="button" class="btn" value="根据用户名" id="showlogbyid"></input>
         <input type="button" class="btn" value="根据角色名" id="showlogbychar"></input>
@@ -573,6 +583,20 @@ async function fyg_pk_html() {
                 saveConfig();
             })
         }
+        $('#showExtrainfo').prop("checked", config["showExtrainfo"]);
+        if (config["showExtrainfo"]){
+            $("#extrainfo").removeClass("hidden");
+        }
+        $("#showExtrainfo").change(function(){
+            if (this.checked === true){
+                config.showExtrainfo = true;
+                $("#extrainfo").removeClass("hidden");
+            }else{
+                config.showExtrainfo = false;
+                $("#extrainfo").addClass("hidden");
+            }
+            saveConfig();
+        })
         for(let checkboxid of checkboxids){
             initCheckbox(checkboxid);
         }
@@ -644,8 +668,9 @@ async function fyg_pk_html() {
         let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
             '<span style="width: 60px">{time}</span><span style="width: 120px;">{name}</span>'+
             (config.showSM?'<span style="width: 70px;">{xishu}</span>':"")+
-            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>{extrainfo}':'')+
             '</h3></div><div style="display:none;">{log}</div></div>';
+
         let during_s = 24 * 60 * 60 * 1000;
         let day = getLocDate(key);
         let day_ = new Date(day.getTime() + during_s);
@@ -655,7 +680,7 @@ async function fyg_pk_html() {
     async function setDetaillogpanelByname(enemyname){
         let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
             '<span style="width: 100px;">{date}</span><span style="width: 120px;">{name}</span>'+
-            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>{extrainfo}':'')+
             '</h3></div><div style="display:none;">{log}</div></div>';
         let items = await db.battleLog.where({username:user,enemyname:enemyname}).sortBy('time');
         setDetaillogpanel(divtext, items);
@@ -664,7 +689,7 @@ async function fyg_pk_html() {
         const queryLimit = 50;
         let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
             '<span style="width: 100px;">{date}</span><span style="width: 120px;">{name}</span>'+
-            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>{extrainfo}':'')+
             '</h3></div><div style="display:none;">{log}</div></div>';
         let items = await db.battleLog.where({username:user}).and(item =>{
             let reg = new RegExp(enemynameRegex, "i");
@@ -676,7 +701,7 @@ async function fyg_pk_html() {
     async function setDetaillogpanelBychar(charname, maxQueryDay){
         let divtext = '<div class="detaillogitem {thisclass}"><div class="nameandlevel"><h3>'+
             '<span style="width: 100px;">{monthday}  {time}</span><span style="width: 120px;">{name}</span>'+
-            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>':'')+
+            (config.showcharlv?'<span style="width: 40px;">{char}</span><span style="width: 80px;">{charlv}</span>{extrainfo}':'')+
             '</h3></div><div style="display:none;">{log}</div></div>';
         let during_s = maxQueryDay * 24 * 60 * 60 * 1000
         let day_ = new Date()
@@ -689,7 +714,7 @@ async function fyg_pk_html() {
         let text = '';
         let len=items.length;
         if(len === 0){
-            let emptyDivLogData = {thisclass:"",name: "无数据",xishu: "",char:"",charlv:"",log: "",time:"",date:"",monthday:""};
+            let emptyDivLogData = {thisclass:"",name: "无数据",xishu: "",char:"",charlv:"",log: "",time:"",date:"",monthday:"",extrainfo:""};
             text+=divtext.format(emptyDivLogData);
         }else{
             for(let i=len-1;i>=0;i--){
@@ -706,6 +731,9 @@ async function fyg_pk_html() {
     }
     function fillzero(numStr, pos){
         return numStr.toString().padStart(pos,'0');
+    }
+    function strWhenBool(cond, str){
+        return cond?str:'';
     }
     function makeDetaillogitem(divtext, item){
         let thisclass = '';
@@ -727,60 +755,192 @@ async function fyg_pk_html() {
         }
         let char = item.char;
         let charlv = "LV:"+item.charlevel;
-        let divLogData = {thisclass,name,xishu,char,charlv,log: item.log,time,date,monthday};
+
+        let extrainfo = "";
+        if(Array.isArray(item.attrs) && config.showExtrainfo){
+            const weaponAbbrMap = new Map([
+                ["SWORD", "剑"],["BOW", "短弓"],["STAFF", "短杖"],
+                ["BLADE", "刃"],["ASSBOW", "弓"],["DAGGER", "匕首"],
+                ["WAND", "光辉"],["SHIELD", "盾剑"],["CLAYMORE", "重剑"],
+                ["SPEAR", "长枪"],["COLORFUL", "长剑"]
+            ]);
+            const armorAbbrMap = new Map([
+                ["PLATE", "铁甲"],["LEATHER", "皮甲"],["CLOTH", "布甲"],["CLOAK", "袍子"],
+                ["THORN", "重甲"],["WOOD", "木甲"],["CAPE", "斗篷"]
+            ]);
+            const upStr = "10+";
+            const minDamagePer = 30;
+            let spanOri = "<span style='width:{0}px;'>{1}</span>";
+            let attrOri = "<span style='width:120px; color:grey'>{0}</span>";
+            let weapon = weaponAbbrMap.get(item.weapon);
+            let armor = armorAbbrMap.get(item.armor);
+
+            let damages = item.damages;
+            let damagePerStr = "";
+            let damageSum = damages[0]+damages[1]+damages[2];
+            if(damageSum === 0){
+                damagePerStr = "0";
+            } else {
+                let damageClass = ["text-danger", "text-primary", "text-warning"];
+                let damagePerOri = "<i class='{0}'>{1}% </i>";
+                for(let i = 0; i < 3; i++){
+                    let per = (damages[i]*100/damageSum).toFixed(0);
+                    if(per < minDamagePer){
+                        continue;
+                    } else {
+                        damagePerStr += damagePerOri.format(damageClass[i], per);
+                    }
+                }
+            }
+            const attrName = ['力', '敏', '智', '体', '精', '意'];
+            const attrsClassValid = new Map([["up", "icon-angle-up"], ["doubleup", "icon-double-angle-up"]]);
+            let attrs = item.attrs;
+            let attrStr = "";
+            let str = "<i class='{0}'></i>{1} ";
+            for(let i = 0; i < 6; i++){
+                if(attrsClassValid.has(attrs[i])){
+                    let attrsClass = attrsClassValid.get(attrs[i]);
+                    attrStr += str.format(attrsClass, attrName[i]);
+                }
+            }
+
+            const halosValid = ["FEI", "BO", "JU", "HONG", "JUE", "HOU", "DUNH", "ZI"];
+            let halos = item.halos;
+            let haloStr = "|";
+            for(let i = halos.length-1; i >= 0; i--){
+                if(halosValid.includes(halos[i])){
+                   haloStr += halos[i]+'|';
+                }
+            }
+            if(haloStr === "|"){
+                haloStr = "";
+            }
+
+            extrainfo = spanOri.format(50, weapon) + strWhenBool(config.showArmor, spanOri.format(50, armor))
+                + strWhenBool(config.showDamage, spanOri.format(110, damagePerStr))
+                + strWhenBool(config.showAttr, attrOri.format(attrStr))
+                + strWhenBool(config.showHalo, spanOri.format(190, haloStr));
+        }
+        let divLogData = {thisclass,name,xishu,char,charlv,log: item.log,extrainfo,time,date,monthday};
         return divtext.format(divLogData);
     }
 
+    const weaponMap = new Map([
+        ["探险者之剑", "SWORD"],["探险者短弓", "BOW"],["探险者短杖", "STAFF"],
+        ["狂信者的荣誉之刃", "BLADE"],["反叛者的刺杀弓", "ASSBOW"],["幽梦匕首", "DAGGER"],
+        ["光辉法杖", "WAND"],["荆棘盾剑", "SHIELD"],["陨铁重剑", "CLAYMORE"],
+        ["饮血魔剑", "SPEAR"],["彩金长剑", "COLORFUL"]
+    ]);
+    const armorMap = new Map([
+        ["探险者铁甲", "PLATE"],["探险者皮甲", "LEATHER"],["探险者布甲", "CLOTH"],
+        ["旅法师的灵光袍", "CLOAK"],["战线支撑者的荆棘重甲", "THORN"],["复苏战衣", "WOOD"],
+        ["挑战斗篷", "CAPE"]
+    ]);
+    const equipOldMap = new Map([["饮血长枪","SPEAR"],["荆棘剑盾","SHIELD"],["复苏木甲", "WOOD"]]);
+    const haloMap = new Map([
+        ["启程之誓", "SHI"], ["启程之心", "XIN"], ["启程之风", "FENG"],
+        ["等级挑战", "TIAO"], ["等级压制", "YA"], ["破壁之心", "BI"], ["破魔之心", "MO"],
+        ["复合护盾", "DUN"], ["鲜血渴望", "XUE"], ["削骨之痛", "XIAO"], ["圣盾祝福", "SHENG"],
+        ["恶意抽奖", "E"], ["伤口恶化", "SHANG"], ["精神创伤", "SHEN"], ["铁甲尖刺", "CI"],
+        ["忍无可忍", "REN"], ["热血战魂", "RE"], ["点到为止", "DIAN"], ["午时已到", "WU"],
+        ["纸薄命硬", "ZHI"], ["不动如山", "SHAN"], ["沸血之志", "FEI"], ["波澜不惊", "BO"],
+        ["飓风之力", "JU"], ["红蓝双刺", "HONG"], ["荧光护盾", "JUE"], ["后发制人", "HOU"],
+        ["钝化锋芒", "DUNH"], ["自信回头", "ZI"]
+    ]);
+    const attrMap = new Map([
+        ["icon-double-angle-down", "doubledown"], ["icon-angle-down", "down"],
+        ["icon-double-angle-up", "doubleup"], ["icon-angle-up", "up"],
+    ]);
+
     let observerBody1 = new MutationObserver(async ()=>{ //战斗记录
+        let battleLog = {};
         var pkTextDiv = document.querySelector("#pk_text");
         unsafeWindow.pkTextDiv = pkTextDiv;
+        battleLog.etext = pkTextDiv.innerHTML;
         var enemydivs = pkTextDiv.querySelectorAll("span.fyg_f18");
         if(enemydivs==null||enemydivs.length<2){return;}
         var enemyinfo = pkTextDiv.querySelectorAll("div.col-md-6")[1];
         var isbattlewin = pkTextDiv.querySelectorAll(".icon-smile").length>0;
         var isbattlelose = pkTextDiv.querySelectorAll(".icon-frown").length>0;
-        var battleresult;
         if(isbattlewin){
-            battleresult = true;
+            battleLog.battleresult = true;
         }else if(isbattlelose){
-            battleresult = false;
+            battleLog.battleresult = false;
         }else{
-            battleresult = 0;
+            battleLog.battleresult = 0;
         }
 
         var enemydiv = enemydivs[1];
         var enemydivtext = enemydiv.innerText;
         var einfolist = enemydivtext.match(/(.+)（(.+) Lv\.(\d+)/)
-        var enemyname,echar,echarlv
         if(einfolist === null){
             einfolist = enemydivtext.match(/(.+)（/)
-            enemyname = einfolist[1]
-            echar = "无"//职业
-            echarlv = "0"
+            battleLog.enemyname = einfolist[1]
+            battleLog.echar = "无"//职业
+            battleLog.echarlv = "0"
         }else{
-            enemyname = einfolist[1]
-            echar = einfolist[2]//职业
-            echarlv = einfolist[3]
+            battleLog.enemyname = einfolist[1]
+            battleLog.echar = einfolist[2]//职业
+            battleLog.echarlv = einfolist[3]
         }
 
+        battleLog.invalids = [];
+        function mapGet(map, oriValue, type){
+            let desValue = map.get(oriValue);
+            if(desValue === undefined){
+                battleLog.invalids.push({"type": type, "oriValue": oriValue});
+                console.log("errMap: {0}, {1}".format(type, oriValue));
+            }
+            return desValue;
+        }
+        function sumMap(map1, map2){
+            return new Map([...map1, ...map2]);
+        }
+        let weaponName = enemyinfo.querySelectorAll(".fyg_mp3")[0].dataset.originalTitle;
+        battleLog.weapon = mapGet(sumMap(weaponMap,equipOldMap) , weaponName, "weapon");
+        let armorName = enemyinfo.querySelectorAll(".fyg_mp3")[2].dataset.originalTitle;
+        battleLog.armor = mapGet(sumMap(armorMap,equipOldMap), armorName, "armor");
+
+        let physical = pkTextDiv.querySelectorAll("div.hl-primary > .col-md-2")[3].innerText;
+        let magical = pkTextDiv.querySelectorAll("div.hl-primary > .col-md-2")[4].innerText;
+        let trueD = pkTextDiv.querySelectorAll("div.hl-primary > .col-md-2")[5].innerText;
+        battleLog.damages = [parseInt(physical),parseInt(magical),parseInt(trueD)];
+
+        let angles = enemyinfo.querySelectorAll("span.fyg_f14")[2]
+            .getElementsByTagName("i");
+        battleLog.attrs = [];
+        for(let i = 0; i < 6; i++){
+            let attrClass= angles[i].classList[1];
+            battleLog.attrs.push(mapGet(attrMap, attrClass, "attrClass"+i));
+        }
+        let iHalo = enemyinfo.querySelectorAll(".fyg_tr")[0].innerText.matchAll(/\|[^\|]+\|/g);
+        battleLog.halos = [];
+        let haloIndex = 0;
+        for(let haloRaw of iHalo){
+            let haloName = haloRaw[0].substring(1,5);
+            battleLog.halos.push(mapGet(haloMap, haloName, "halo"+haloIndex));
+            haloIndex++;
+        }
 
         /*console.log(enemydivtext)
         console.log(echar)
         console.log(echarlv)*/
-
-        await logupdate(pkTextDiv.innerHTML,battleresult,enemyname,echar,echarlv);
-        if(echar=="野怪"){return}
+        await logupdate(battleLog);
+        if(battleLog.echar=="野怪"){return}
         if(mainHost!="0"){
-            get_user_theard(enemyname);
+            get_user_theard(battleLog.enemyname);
         }
 
     });
 
-    async function logupdate(etext,isbattlewin,enemyname,enemychar,enemycharlv){
+    async function logupdate(battleLog){
         var now = getLocDate();
-        var thisid = md5(etext)
+        var thisid = md5(battleLog.etext)
 
-        await db.battleLog.add({id:thisid,username:user,log:etext, isWin:isbattlewin,enemyname:enemyname,char:enemychar,charlevel:enemycharlv,time:now});
+        await db.battleLog.add({id: thisid, username: user, log: battleLog.etext, isWin: battleLog.battleresult,
+            enemyname: battleLog.enemyname, char: battleLog.echar, charlevel: battleLog.echarlv, attrs: battleLog.attrs,
+            damages: battleLog.damages, halos: battleLog.halos, weapon: battleLog.weapon, armor: battleLog.armor,
+            invalids: battleLog.invalids, time:now});
     }
 
     async function logupdateraw(etext,isbattlewin,enemyname,enemychar,enemycharlv,now,username){
