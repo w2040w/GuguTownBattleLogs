@@ -935,7 +935,7 @@ async function fyg_pk_html() {
 
     async function logupdate(battleLog){
         var now = getLocDate();
-        var thisid = md5(battleLog.etext)
+        var thisid = md5(battleLog.etext+now.getTime());
 
         await db.battleLog.add({id: thisid, username: user, log: battleLog.etext, isWin: battleLog.battleresult,
             enemyname: battleLog.enemyname, char: battleLog.echar, charlevel: battleLog.echarlv, attrs: battleLog.attrs,
