@@ -12,16 +12,15 @@
 // @require      https://greasyfork.org/scripts/409864-url-gbk-%E7%BC%96%E7%A0%81%E8%A7%A3%E7%A0%81%E5%BA%93/code/URL%20GBK%20%E7%BC%96%E7%A0%81%E8%A7%A3%E7%A0%81%E5%BA%93.js?version=840815
 // @require      https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.16.0/js/md5.min.js
 // @resource     dateTimecss https://gitee.com/ikarosf/calendarjs/raw/master/calendar.css
-// @connect      bbs.fygal.com
-// @connect      kf.miaola.info
-// @connect      bbs.kforz.com
-// @connect      bbs.bakabbs.com
-// @connect      bbs.365gal.com
-// @connect      bbs.365galgame.com
-// @connect      bbs.kfmax.com
-// @connect      bbs.9shenmi.com
-// @connect      bbs.kfpromax.com
-// @connect      kf.miaola.work
+// @connect      fygal.com
+// @connect      bakabbs.com
+// @connect      9dkf.com
+// @connect      365gal.com
+// @connect      365galgame.com
+// @connect      kfmax.com
+// @connect      9shenmi.com
+// @connect      kfpromax.com
+// @connect      miaola.work
 // @grant        GM_getResourceText
 // @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
