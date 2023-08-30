@@ -490,20 +490,6 @@ async function fyg_pk_html() {
         </div>
         <div>
         <div>
-        <input type="checkbox" id="showSM" style="width: 20px;">记录显示系数</input>
-        <span style="width:20px;display: inline-block;"></span>
-        <input type="checkbox" id="showcharlv" style="width: 20px;">记录显示等级</input>
-        </div>
-        <div>
-        <input type="checkbox" id="showExtrainfo" style="width: 20px;">显示额外信息</input>
-        </div>
-        <div class="hidden" id="extrainfo">
-        <input type="checkbox" id="showArmor" style="width: 20px;">防具</input>
-        <input type="checkbox" id="showDamage" style="width: 20px;">伤害比例</input>
-        <input type="checkbox" id="showAttr" style="width: 20px;">加点</input>
-        <input type="checkbox" id="showHalo" style="width: 20px;">光环</input>
-        </div>
-        <div>
         查询记录：
         <input type="button" class="btn" value="根据用户名" id="showlogbyid"></input>
         <input type="button" class="btn" value="根据角色名" id="showlogbychar"></input>
@@ -529,6 +515,28 @@ async function fyg_pk_html() {
             </form>
         </dialog>
         </div>
+        <input type="button" class="btn" value="设置" id="showConfig"></input>
+    <dialog id="configDialog">
+        <form method="dialog">
+            <div>
+                <div>
+                    <input type="checkbox" id="showExtrainfo" style="width: 20px;">显示额外信息</input>
+                </div>
+                <div class="hidden" id="extrainfo">
+                    <input type="checkbox" id="showArmor" style="width: 20px;">防具</input>
+                    <input type="checkbox" id="showDamage" style="width: 20px;">伤害比例</input>
+                    <input type="checkbox" id="showAttr" style="width: 20px;">加点</input>
+                    <input type="checkbox" id="showHalo" style="width: 20px;">光环</input>
+                </div>
+                <div>
+                    <input type="checkbox" id="showSM" style="width: 20px;">记录显示系数</input>
+                    <span style="width:20px;display: inline-block;"></span>
+                    <input type="checkbox" id="showcharlv" style="width: 20px;">记录显示等级</input>
+                </div>
+                <button class="cancelBtn">Cancel</button>
+            </div>
+        </form>
+    </dialog>
         <div>
         <input type="button" class="btn" value="导出历史" id="exportlog"></input>
         <span style="width:20px;display: inline-block;"></span>
@@ -651,6 +659,8 @@ async function fyg_pk_html() {
         }
         initQueryDialog("userQueryDialog", "showlogbyid", userQuery);
         initQueryDialog("charQueryDialog", "showlogbychar", charQuery);
+        const configDialog = document.getElementById('configDialog');
+        initQueryDialog('configDialog', 'showConfig', configDialog.close);
         $("#daylimit").val(config.queryMaxDay);
 
         $("#exportlog").click(async function(){
