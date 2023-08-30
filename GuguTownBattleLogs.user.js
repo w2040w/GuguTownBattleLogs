@@ -776,7 +776,7 @@ async function fyg_pk_html() {
                 ["SWORD", "剑"],["BOW", "短弓"],["STAFF", "短杖"],
                 ["BLADE", "刃"],["ASSBOW", "弓"],["DAGGER", "匕首"],
                 ["WAND", "光辉"],["SHIELD", "盾剑"],["CLAYMORE", "重剑"],
-                ["SPEAR", "长枪"],["COLORFUL", "长剑"]
+                ["SPEAR", "长枪"],["COLORFUL", "长剑"],['LIMPIDWAND', '长杖']
             ]);
             const armorAbbrMap = new Map([
                 ["PLATE", "铁甲"],["LEATHER", "皮甲"],["CLOTH", "布甲"],["CLOAK", "袍子"],
@@ -843,7 +843,7 @@ async function fyg_pk_html() {
         ["探险者之剑", "SWORD"],["探险者短弓", "BOW"],["探险者短杖", "STAFF"],
         ["狂信者的荣誉之刃", "BLADE"],["反叛者的刺杀弓", "ASSBOW"],["幽梦匕首", "DAGGER"],
         ["光辉法杖", "WAND"],["荆棘盾剑", "SHIELD"],["陨铁重剑", "CLAYMORE"],
-        ["饮血魔剑", "SPEAR"],["彩金长剑", "COLORFUL"]
+        ["饮血魔剑", "SPEAR"],["彩金长剑", "COLORFUL"],['清澄长杖', 'LIMPIDWAND'],
     ]);
     const armorMap = new Map([
         ["探险者铁甲", "PLATE"],["探险者皮甲", "LEATHER"],["探险者布甲", "CLOTH"],
