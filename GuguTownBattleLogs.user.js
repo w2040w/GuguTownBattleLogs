@@ -315,6 +315,11 @@ async function fyg_pk_html() {
                             get_user_theard_try_num = 0;
                             return;
                         }
+                        if(info.indexOf('登录 | 注册') != -1){
+                            show_battle_log('在该域名下未登陆');
+                            get_user_theard_try_num = 0;
+                            return;
+                        }
                         console.log('搜索尝试次数：' + get_user_theard_try_num)
                         if(info.indexOf("搜索排队中")!=-1&&get_user_theard_try_num<3){
                             get_user_theard_try_num++;
