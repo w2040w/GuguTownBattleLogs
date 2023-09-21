@@ -581,10 +581,10 @@ async function fyg_pk_html() {
             initCheckbox(checkboxid);
         }
 
-        $("#deletelog").click(function(){
+        $("#deletelog").click(async function(){
             var dayss = parseInt(prompt("将多少天以前的战斗记录清除？\n警告：删除的记录无法恢复，假如填0将删除所有记录"))
             if(!isNaN(dayss)&&dayss>=0){
-                autodeletelog(dayss)
+                await autodeletelog(dayss)
                 alert("清除完成，请刷新")
             }else{
                 alert("输入错误或取消操作")
